@@ -1,0 +1,123 @@
+---
+- name: Deploy the Keycloak Container-as-a-Service
+  hosts: all
+  gather_facts: true
+  become: true
+  vars:
+    # service_containers_dir: Where will the files for this service be stored
+    service_containers_dir: /opt/caas
+
+    install_packages: false
+    configure_firewalld: false
+    configure_selinux: false
+
+    # service defaults - can be overridden at the service, runtime, or site_config level
+    timezone: America/New_York
+
+    additionalTrustedRootCerts:
+    - https://github.com/kenmoini/homelab/raw/main/serto-root-ca.pem
+    - https://github.com/kenmoini/homelab/raw/main/klstep-ca.pem
+    - https://github.com/kenmoini/homelab/raw/main/pgv-root-ca.pem
+
+  tasks:
+
+    - name: Read in the site config variables
+      include_vars:
+        dir: "site-configs/{{ inventory_hostname }}"
+        depth: 1
+        ignore_unknown_extensions: true
+        extensions:
+          - yml
+          - yaml
+
+    - name: Ensure the needed packages are installed
+      when: site_config[inventory_hostname]['install_packages'] | default(install_packages)
+      package:
+        name: "{{ package_item }}"
+        state: latest
+      loop:
+      - podman
+      - udica
+      - firewalld
+      loop_control:
+        loop_var: package_item
+
+    - name: Start FirewallD
+      #when: configure_firewalld|bool
+      when: site_config[inventory_hostname]['configure_firewalld'] | default(configure_firewalld)
+      ansible.builtin.service:
+        name: firewalld
+        state: started
+        enabled: true
+
+    # TODO: Figure out the firewalld bits in a ip bridge container network
+    #- name: Ensure the needed ports are open
+    #  when: configure_firewalld|bool
+    #  when: site_config[inventory_hostname]['configure_firewalld'] | default(configure_firewalld)
+    #  ansible.posix.firewalld:
+    #    state: enabled
+    #    port: "{{ port_item }}"
+    #    permanent: yes
+    #    immediate: yes
+    #  loop:
+    #  - 8080/tcp
+    #  loop_control:
+    #    loop_var: port_item
+
+    - name: Create Service Containers Directory
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        owner: root
+        group: root
+      with_items:
+        - "{{ service_containers_dir }}"
+
+    - name: Pre-pull the Keycloak image
+      containers.podman.podman_image:
+        name: "{{ service.keycloak_container.image | default('quay.io/keycloak/keycloak:latest') }}"
+        pull: yes
+        force: yes
+      loop: "{{ services }}"
+      loop_control:
+        loop_var: service
+
+    - name: Pre-pull the Postgres image
+      containers.podman.podman_image:
+        name: "{{ service.postgresql_container.image | default('docker.io/bitnami/postgresql:latest') }}"
+        pull: yes
+        force: yes
+      loop: "{{ services }}"
+      loop_control:
+        loop_var: service
+
+    - name: Run per-service configuration
+      include_tasks: tasks/per-service.yml
+      loop: "{{ services }}"
+      loop_control:
+        loop_var: service
+
+    - name: Reload systemd
+      ansible.builtin.systemd:
+        daemon_reload: yes
+
+    - name: Start CaaS
+      ansible.builtin.service:
+        name: "{{ service.name }}"
+        state: restarted
+        enabled: yes
+      loop: "{{ services }}"
+      loop_control:
+        pause: 60
+        loop_var: service
+
+    - name: Install Container Updater Crontab
+      ansible.builtin.cron:
+        name: "Update {{ service.name }} container"
+        minute: "20"
+        hour: "4"
+        job: "/opt/caas/{{ service.name }}/scripts/servicectl.sh update"
+        user: root
+      loop: "{{ services }}"
+      loop_control:
+        loop_var: service

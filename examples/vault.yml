@@ -1,0 +1,10 @@
+secrets:
+  lab-keycloak:
+    database:
+      user: keycloak
+      password: totallynotjustkeycloaktoo
+      database: keycloak
+
+    keycloak:
+      superuser_username: kadmin
+      superuser_password: totallynotjustkeycloaktoo

@@ -1,0 +1,156 @@
+#!/bin/bash
+
+set -x
+
+###################################################################################
+# VARIABLES
+###################################################################################
+
+POD_NAME="{{ service.name }}"
+POD_NETWORK="--network {{ service.network.name | default('host') }}"
+
+{% if service.network.ports | length > 0 %}
+POD_PORTS="-p {{ service.network.ports | join(' -p ') }}"
+POD_NETWORK="${POD_NETWORK} ${POD_PORTS}"
+{% endif %}
+
+{% if service.network.ip is defined %}
+POD_IP_ADDRESS="{{ service.network.ip }}"
+POD_NETWORK="${POD_NETWORK} --ip ${POD_IP_ADDRESS}"
+{% endif %}
+
+## Base ENVIRONMENTAL VARIABLES
+ENV_VARS="-e TZ={{ service.timezone | default(timezone) }}"
+
+################################################################################
+## KEYCLOAK THINGS
+KEYCLOAK_CONTAINER_NAME="{{ service.keycloak_container.name | default('keycloak-server') }}"
+KEYCLOAK_CONTAINER_IMAGE="{{ service.keycloak_container.image | default('quay.io/keycloak/keycloak:latest') }}"
+KEYCLOAK_RESOURCE_LIMITS="-m {{ service.keycloak_container.resources.memory | default('4096m') }} --cpus {{ service.keycloak_container.resources.cpu | default('0.500') }}"
+KEYCLOAK_CONTAINER_ENV_VARS_FILE="{{ service_containers_dir }}/${POD_NAME}/secrets/.kc_env_vars"
+
+################################################################################
+## DATABASE THINGS
+POSTGRES_CONTAINER_NAME="{{ service.postgresql_container.name | default('keycloak-db') }}"
+POSTGRES_CONTAINER_IMAGE="{{ service.postgresql_container.image | default('docker.io/bitnami/postgresql:latest') }}"
+POSTGRES_CONTAINER_ENV_VARS_FILE="{{ service_containers_dir }}/${POD_NAME}/secrets/.db_env_vars"
+POSTGRES_RESOURCE_LIMITS="-m {{ service.postgresql_container.resources.memory | default('512m') }} --cpus {{ service.postgresql_container.resources.cpu | default('0.500') }}"
+POSTGRES_VOLUME_MOUNTS="-v {{ service_containers_dir }}/${POD_NAME}/volumes/postgresql-data:/bitnami/postgresql"
+
+###################################################################################
+# EXECUTION PREFLIGHT - Generic
+###################################################################################
+
+## Ensure there is an action arguement
+if [ -z "$1" ]; then
+  echo "Need action arguement of 'start', 'restart', 'stop', or 'update'!"
+  echo "${0} start|stop|restart|update"
+  exit 1
+fi
+
+
+################################################################################### SERVICE ACTION SWITCH
+case $1 in
+
+  ################################################################################# RESTART/STOP SERVICE - Generic, Pod
+  "restart" | "stop" | "start")
+    echo "Stopping container services if running..."
+
+    echo "Killing ${POD_NAME} containers and pod..."
+    /usr/bin/podman kill ${KEYCLOAK_CONTAINER_NAME}
+    /usr/bin/podman kill ${POSTGRES_CONTAINER_NAME}
+    /usr/bin/podman pod kill ${POD_NAME}
+
+    echo "Removing ${POD_NAME} container..."
+    /usr/bin/podman rm -f -i ${KEYCLOAK_CONTAINER_NAME}
+    /usr/bin/podman rm -f -i ${POSTGRES_CONTAINER_NAME}
+    /usr/bin/podman pod rm -f -i ${POD_NAME}
+    ;;
+  
+  ################################################################################# UPDATE SERVICE - Image Specific
+  "update")
+    echo "Checking for container updates..."
+{% raw %}
+    # Get the current image SHA
+    CURRENT_IMAGE_SHA=$(podman images --digests --format '{{.Digest}}' ${KEYCLOAK_CONTAINER_IMAGE})
+    LATEST_IMAGE_SHA=$(skopeo inspect docker://${KEYCLOAK_CONTAINER_IMAGE} | jq -r '.Digest')
+{% endraw %}
+    # Compare the two strings, making sure they're not empty and begin wiht 'sha256:'
+    if [ ! -z "${LATEST_IMAGE_SHA}" ] && [ ! -z "${CURRENT_IMAGE_SHA}"  ] && [[ "${LATEST_IMAGE_SHA}" == sha256:* ]] && [[ "${CURRENT_IMAGE_SHA}" == sha256:* ]]; then
+      echo "Current image SHA: ${CURRENT_IMAGE_SHA}"
+      echo "Latest image SHA: ${LATEST_IMAGE_SHA}"
+
+      # If the two strings are different then run the update scripts
+      if [ "${CURRENT_IMAGE_SHA}" != "${LATEST_IMAGE_SHA}" ]; then
+        echo "New image available, updating..."
+
+        # Run the update script
+        ${0} stop
+        /usr/bin/podman pull ${KEYCLOAK_CONTAINER_IMAGE}
+        ${0} start
+      else
+        echo "No new image available, exiting..."
+      fi
+    fi
+
+    ;;
+
+esac
+
+case $1 in
+
+  ################################################################################# RESTART/START SERVICE - CUSTOM
+  "restart" | "start")
+    sleep 3
+
+    echo "Starting container pod services..."
+
+    # Deploy ${POD_NAME} Pod
+    echo -e "Creatging ${POD_NAME} Pod...\n"
+    /usr/bin/podman pod create \
+      --hostname "${POD_NAME}" \
+      ${POD_NETWORK} \
+      ${POD_NAME}
+
+    sleep 3
+
+    chown -R 1001:1001 {{ service_containers_dir }}/${POD_NAME}/volumes/postgresql-data
+
+    # Deploy ${POSTGRES_CONTAINER_NAME} Container
+    echo -e "Creating ${POSTGRES_CONTAINER_NAME} Container...\n"
+    /usr/bin/podman create -t \
+      --pod "${POD_NAME}" \
+      --name "${POSTGRES_CONTAINER_NAME}" \
+      ${ENV_VARS} \
+      --env-file ${POSTGRES_CONTAINER_ENV_VARS_FILE} \
+      ${POSTGRES_VOLUME_MOUNTS} \
+      ${POSTGRES_RESOURCE_LIMITS} \
+{% if configure_selinux %}
+      --security-opt label=type:${POD_NAME}.process \
+{% endif %}
+      ${POSTGRES_CONTAINER_IMAGE}
+
+    sleep 3
+
+    # Deploy ${KEYCLOAK_CONTAINER_NAME} Container
+    echo -e "Creating ${KEYCLOAK_CONTAINER_NAME} Container...\n"
+    /usr/bin/podman create -t \
+      --pod "${POD_NAME}" \
+      --name "${KEYCLOAK_CONTAINER_NAME}" \
+      ${ENV_VARS} \
+      --env-file ${KEYCLOAK_CONTAINER_ENV_VARS_FILE} \
+      ${KEYCLOAK_VOLUME_MOUNTS} \
+      ${KEYCLOAK_RESOURCE_LIMITS} \
+{% if configure_selinux %}
+      --security-opt label=type:${POD_NAME}.process \
+{% endif %}
+      ${KEYCLOAK_CONTAINER_IMAGE} \
+      start --optimized --proxy edge
+
+    sleep 3
+
+    /usr/bin/podman pod start ${POD_NAME}
+
+    ;;
+
+esac

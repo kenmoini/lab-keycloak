@@ -1,0 +1,30 @@
+{% if var_set == "keycloak" %}
+KC_HOSTNAME={{ service.url }}
+KC_HEALTH_ENABLED=true
+KC_METRICS_ENABLED=true
+PROXY_ADDRESS_FORWARDING=true
+
+DB_VENDOR=POSTGRES
+KC_DB=postgres
+
+DB_USER={{ secrets[service.name]['database']['user'] }}
+KC_DB_USERNAME={{ secrets[service.name]['database']['user'] }}
+
+DB_PASSWORD={{ secrets[service.name]['database']['password'] }}
+KC_DB_PASSWORD={{ secrets[service.name]['database']['password'] }}
+
+DB_ADDR=localhost
+DB_DATABASE={{ secrets[service.name]['database']['database'] }}
+KC_DB_URL=jdbc:postgresql://localhost/{{ secrets[service.name]['database']['database'] }}
+
+KEYCLOAK_USER={{ secrets[service.name]['keycloak']['superuser_username'] }}
+KEYCLOAK_ADMIN={{ secrets[service.name]['keycloak']['superuser_username'] }}
+
+KEYCLOAK_PASSWORD={{ secrets[service.name]['keycloak']['superuser_password'] }}
+KEYCLOAK_ADMIN_PASSWORD={{ secrets[service.name]['keycloak']['superuser_password'] }}
+{% endif %}
+{% if var_set == "postgres" %}
+POSTGRESQL_USERNAME={{ secrets[service.name]['database']['user'] }}
+POSTGRESQL_PASSWORD={{ secrets[service.name]['database']['password'] }}
+POSTGRESQL_DATABASE={{ secrets[service.name]['database']['database'] }}
+{% endif %}
