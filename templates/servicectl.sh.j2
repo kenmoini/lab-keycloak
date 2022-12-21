@@ -145,7 +145,7 @@ case $1 in
       --security-opt label=type:${POD_NAME}.process \
 {% endif %}
       ${KEYCLOAK_CONTAINER_IMAGE} \
-      start --optimized --proxy edge
+      start --proxy edge
 
     sleep 3
 

@@ -14,7 +14,11 @@ DB_PASSWORD={{ secrets[service.name]['database']['password'] }}
 KC_DB_PASSWORD={{ secrets[service.name]['database']['password'] }}
 
 DB_ADDR=localhost
+KC_DB_URL_HOST=localhost
+
 DB_DATABASE={{ secrets[service.name]['database']['database'] }}
+KC_DB_URL_DATABASE={{ secrets[service.name]['database']['database'] }}
+
 KC_DB_URL=jdbc:postgresql://localhost/{{ secrets[service.name]['database']['database'] }}
 
 KEYCLOAK_USER={{ secrets[service.name]['keycloak']['superuser_username'] }}

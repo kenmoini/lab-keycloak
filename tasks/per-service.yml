@@ -1,7 +1,7 @@
 ---
 
 - name: If we're forcing a redeployment then just delete the DB directory
-  when: force_redeploy
+  when: service.force_redeploy | default(force_redeploy)
   ansible.builtin.file:
     path: "{{ service_containers_dir }}/{{ service.name }}/volumes/postgresql-data"
     state: absent

@@ -20,3 +20,4 @@ services:
     - 8443/tcp
   realms:
     - kemo-labs.json
+  force_redeploy: true #useful for testing
