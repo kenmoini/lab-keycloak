@@ -1,18 +1,26 @@
 ---
 
+- name: If we're forcing a redeployment then just delete the DB directory
+  when: force_redeploy
+  ansible.builtin.file:
+    path: "{{ service_containers_dir }}/{{ service.name }}/volumes/postgresql-data"
+    state: absent
+
 - name: Create CaaS Directories
   ansible.builtin.file:
-    path: "{{ dir_item }}"
+    path: "{{ dir_item.path }}"
     state: directory
-    owner: root
-    group: root
+    owner: "{{ dir_item.owner | default('root') }}"
+    group: "{{ dir_item.group | default('root') }}"
   loop:
-    - "{{ service_containers_dir }}/{{ service.name }}/"
-    - "{{ service_containers_dir }}/{{ service.name }}/scripts"
-    - "{{ service_containers_dir }}/{{ service.name }}/secrets"
-    - "{{ service_containers_dir }}/{{ service.name }}/volumes"
-    - "{{ service_containers_dir }}/{{ service.name }}/volumes/config"
-    - "{{ service_containers_dir }}/{{ service.name }}/volumes/postgresql-data"
+    - path: "{{ service_containers_dir }}/{{ service.name }}/"
+    - path: "{{ service_containers_dir }}/{{ service.name }}/scripts"
+    - path: "{{ service_containers_dir }}/{{ service.name }}/secrets"
+    - path: "{{ service_containers_dir }}/{{ service.name }}/volumes"
+    - path: "{{ service_containers_dir }}/{{ service.name }}/volumes/config"
+    - path: "{{ service_containers_dir }}/{{ service.name }}/volumes/postgresql-data"
+      owner: 1001
+      group: 1001
   loop_control:
     loop_var: dir_item
 

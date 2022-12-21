@@ -11,6 +11,8 @@
     configure_firewalld: false
     configure_selinux: false
 
+    force_redeploy: false
+
     # service defaults - can be overridden at the service, runtime, or site_config level
     timezone: America/New_York
 
