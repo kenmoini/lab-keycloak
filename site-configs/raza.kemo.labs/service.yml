@@ -1,0 +1,22 @@
+---
+services:
+- name: lab-keycloak
+  url: sso.kemo.labs
+  keycloak_container:
+    name: lab-keycloak-server
+    image: quay.io/keycloak/keycloak:latest
+    resources:
+      limits:
+        cpu: 0.500
+        memory: 4Gi # big ol java boi
+  postgresql_container:
+    name: lab-keycloak-postgresql
+    image: docker.io/bitnami/postgresql:latest
+  network:
+    name: lanBridge
+    ip: 192.168.42.18
+    ports:
+    - 8080/tcp
+    - 8443/tcp
+  realms:
+    - kemo-labs.json
