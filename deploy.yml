@@ -17,9 +17,9 @@
     timezone: America/New_York
 
     additionalTrustedRootCerts:
-    - https://github.com/kenmoini/homelab/raw/main/serto-root-ca.pem
-    - https://github.com/kenmoini/homelab/raw/main/klstep-ca.pem
-    - https://github.com/kenmoini/homelab/raw/main/pgv-root-ca.pem
+    - https://github.com/kenmoini/homelab/raw/main/pki/root-authorities/serto-root-ca.pem
+    - https://github.com/kenmoini/homelab/raw/main/pki/root-authorities/klstep-ca.pem
+    - https://github.com/kenmoini/homelab/raw/main/pki/root-authorities/pgv-root-ca.pem
 
   tasks:
 
