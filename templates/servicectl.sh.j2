@@ -38,6 +38,11 @@ POSTGRES_CONTAINER_ENV_VARS_FILE="{{ service_containers_dir }}/${POD_NAME}/secre
 POSTGRES_RESOURCE_LIMITS="-m {{ service.postgresql_container.resources.memory | default('512m') }} --cpus {{ service.postgresql_container.resources.cpu | default('0.500') }}"
 POSTGRES_VOLUME_MOUNTS="-v {{ service_containers_dir }}/${POD_NAME}/volumes/postgresql-data:/bitnami/postgresql"
 
+################################################################################
+## JAVA KEYSTORE THINGS
+JKS_PATH="/etc/pki/ca-trust/extracted/java/cacerts"
+JKS_VOLUME_MOUNT="-v ${JKS_PATH}:${JKS_PATH}"
+
 ###################################################################################
 # EXECUTION PREFLIGHT - Generic
 ###################################################################################
@@ -152,6 +157,7 @@ case $1 in
       --security-opt label=type:${POD_NAME}.process \
 {% endif %}
       ${KEYCLOAK_CONTAINER_IMAGE} \
+      ${JKS_VOLUME_MOUNT} \
       start --proxy edge
 
     sleep 3

@@ -68,7 +68,7 @@
     dest: "/etc/systemd/system/{{ service.name }}.service"
     owner: root
     group: root
-    mode: 0755
+    mode: 0644
 
 - name: "Template CaaS deployment files - Keycloak Env Vars"
   ansible.builtin.template:
