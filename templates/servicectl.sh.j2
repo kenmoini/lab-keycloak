@@ -40,7 +40,7 @@ POSTGRES_VOLUME_MOUNTS="-v {{ service_containers_dir }}/${POD_NAME}/volumes/post
 
 ################################################################################
 ## JAVA KEYSTORE THINGS
-JKS_PATH="/etc/pki/ca-trust/extracted/java/cacerts"
+JKS_PATH="/etc/pki/ca-trust/extracted/java"
 JKS_VOLUME_MOUNT="-v ${JKS_PATH}:${JKS_PATH}"
 
 ###################################################################################
@@ -152,12 +152,12 @@ case $1 in
       ${ENV_VARS} \
       --env-file ${KEYCLOAK_CONTAINER_ENV_VARS_FILE} \
       ${KEYCLOAK_VOLUME_MOUNTS} \
+      ${JKS_VOLUME_MOUNT} \
       ${KEYCLOAK_RESOURCE_LIMITS} \
 {% if configure_selinux %}
       --security-opt label=type:${POD_NAME}.process \
 {% endif %}
       ${KEYCLOAK_CONTAINER_IMAGE} \
-      ${JKS_VOLUME_MOUNT} \
       start --proxy edge
 
     sleep 3
