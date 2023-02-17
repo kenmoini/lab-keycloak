@@ -18,6 +18,7 @@
     - path: "{{ service_containers_dir }}/{{ service.name }}/secrets"
     - path: "{{ service_containers_dir }}/{{ service.name }}/volumes"
     - path: "{{ service_containers_dir }}/{{ service.name }}/volumes/config"
+    - path: "{{ service_containers_dir }}/{{ service.name }}/volumes/realms"
     - path: "{{ service_containers_dir }}/{{ service.name }}/volumes/postgresql-data"
       owner: 1001
       group: 1001
@@ -89,3 +90,15 @@
     mode: 0740
   vars:
     var_set: postgres
+
+- name: Copy over the defined realms files
+  when: service.realms is defined and service.realms | length > 0
+  ansible.builtin.copy:
+    src: "site-configs/{{ inventory_hostname }}/realms/{{ realm_item }}"
+    dest: "{{ service_containers_dir }}/{{ service.name }}/volumes/realms/{{ realm_item }}"
+    owner: root
+    group: root
+    mode: 0644
+  loop: "{{ service.realms }}"
+  loop_control:
+    loop_var: realm_item

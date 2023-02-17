@@ -23,6 +23,12 @@ POD_NETWORK="${POD_NETWORK} --ip ${POD_IP_ADDRESS}"
 ## Base ENVIRONMENTAL VARIABLES
 ENV_VARS="-e TZ={{ service.timezone | default(timezone) }}"
 
+{% if (service.realms is defined) and (service.realms | length > 0) %}
+REALM_IMPORT_MOUNT="-v {{ service_containers_dir }}/${POD_NAME}/realms:/opt/keycloak/data/import"
+{% else %}
+REALM_IMPORT_MOUNT=""
+{% endif %}
+
 ################################################################################
 ## KEYCLOAK THINGS
 KEYCLOAK_CONTAINER_NAME="{{ service.keycloak_container.name | default('keycloak-server') }}"
@@ -152,13 +158,16 @@ case $1 in
       ${ENV_VARS} \
       --env-file ${KEYCLOAK_CONTAINER_ENV_VARS_FILE} \
       ${KEYCLOAK_VOLUME_MOUNTS} \
+{% if (service.realms is defined) and (service.realms | length > 0) %}
+      ${REALM_VOLUME_MOUNTS} \
+{% endif %}
       ${JKS_VOLUME_MOUNT} \
       ${KEYCLOAK_RESOURCE_LIMITS} \
 {% if configure_selinux %}
       --security-opt label=type:${POD_NAME}.process \
 {% endif %}
       ${KEYCLOAK_CONTAINER_IMAGE} \
-      start --proxy edge{% if service.realms | length > 0 %} --import-realm{% endif %}
+      start --proxy edge{% if (service.realms is defined) and (service.realms | length > 0) %} --import-realm{% endif %}
 
     sleep 3
 

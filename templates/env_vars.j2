@@ -26,11 +26,12 @@ KEYCLOAK_ADMIN={{ secrets[service.name]['keycloak']['superuser_username'] }}
 
 KEYCLOAK_PASSWORD={{ secrets[service.name]['keycloak']['superuser_password'] }}
 KEYCLOAK_ADMIN_PASSWORD={{ secrets[service.name]['keycloak']['superuser_password'] }}
+
+KC_FEATURES="authorization, account2, account-api, admin-fine-grained-authz, admin-api, admin, admin2, docker, impersonation, openshift-integration, scripts, token-exchange, web-authn, client-policies, ciba, map-storage, par, declarative-user-profile, dynamic-scopes, client-secret-rotation, step-up-authentication, recovery-codes, update-email, js-adapter, preview"
+
 {% endif %}
 {% if var_set == "postgres" %}
 POSTGRESQL_USERNAME={{ secrets[service.name]['database']['user'] }}
 POSTGRESQL_PASSWORD={{ secrets[service.name]['database']['password'] }}
 POSTGRESQL_DATABASE={{ secrets[service.name]['database']['database'] }}
 {% endif %}
-
-KC_FEATURES="authorization, account2, account-api, admin-fine-grained-authz, admin-api, admin, admin2, docker, impersonation, openshift-integration, scripts, token-exchange, web-authn, client-policies, ciba, map-storage, par, declarative-user-profile, dynamic-scopes, client-secret-rotation, step-up-authentication, recovery-codes, update-email, js-adapter, preview"
