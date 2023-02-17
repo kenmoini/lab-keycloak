@@ -158,7 +158,7 @@ case $1 in
       --security-opt label=type:${POD_NAME}.process \
 {% endif %}
       ${KEYCLOAK_CONTAINER_IMAGE} \
-      start --proxy edge
+      start --proxy edge{% if service.realms | length > 0 %} --import-realm{% endif %}
 
     sleep 3
 
